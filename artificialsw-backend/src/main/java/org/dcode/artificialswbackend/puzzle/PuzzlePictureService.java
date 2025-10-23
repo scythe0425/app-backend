@@ -11,6 +11,8 @@ import org.dcode.artificialswbackend.archive.repository.TreeRepository;
 import org.dcode.artificialswbackend.puzzle.dto.*;
 import org.dcode.artificialswbackend.puzzle.entity.*;
 import org.dcode.artificialswbackend.puzzle.repository.*;
+import org.dcode.artificialswbackend.puzzle.util.DateSegmentInfo;
+import org.dcode.artificialswbackend.puzzle.util.DateSegmentUtil;
 import org.dcode.artificialswbackend.signup.repository.SignUpRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -272,12 +274,11 @@ public class PuzzlePictureService {
             int month
     ) {
         // 1. 날짜 및 포지션 계산
-        LocalDate now = LocalDate.now(ZoneId.of("Asia/Seoul"));
-        int archiveYear = now.getYear();
-        int archiveMonth = now.getMonthValue();
-        int day = now.getDayOfMonth();
-        int period = (day <= 15) ? 1 : 2;
-        int position = (day <= 7 || (15 < day && day <= 22)) ? 3 : 4;
+        DateSegmentInfo dateInfo = DateSegmentUtil.getDateSegmentInfo();
+        int position = dateInfo.getPosition();
+        int period = dateInfo.getPeriod();
+        int archiveYear = LocalDate.now(ZoneId.of("Asia/Seoul")).getYear();
+        int archiveMonth = LocalDate.now(ZoneId.of("Asia/Seoul")).getMonthValue();
 
         // 2. 퍼즐 조회/완료 처리
         Puzzle puzzle = getPuzzleById(puzzleId);
@@ -629,25 +630,17 @@ public class PuzzlePictureService {
     }
 
     // 홈 화면 기능
-
     public List<String> getActiveCategorySet() {
-        LocalDate today = LocalDate.now();
-        int day = today.getDayOfMonth();
-        int lastDay = YearMonth.now().atEndOfMonth().getDayOfMonth();
-
-        int segmentSize = (int) Math.ceil(lastDay / 5.0); // 한 구간 당 일수, 올림 처리
-
-        int setIndex = (day - 1) / segmentSize; // 0-based 구간 인덱스 (0 ~ 4)
-
-        int startId = setIndex * 3 + 1; // 기존 로직에 맞춘 startId 계산
+        DateSegmentInfo dateInfo = DateSegmentUtil.getDateSegmentInfo();
+        int startId = dateInfo.getSetIndex() * 3 + 1;
         int endId = Math.min(startId + 2, 100);
 
-// id 범위에 맞는 카테고리 조회
         List<PuzzleCategory> categories = puzzleCategoryRepository.findByIdBetween((long) startId, (long) endId);
         return categories.stream()
                 .map(PuzzleCategory::getCategory)
                 .collect(Collectors.toList());
     }
+
 
     public List<InProgressPuzzleDto> findInProgressForHome(Long familyId) {
         List<Puzzle> puzzles = puzzleRepository.findByFamiliesIdAndCompletedAndBePuzzle(familyId, false, 1);
